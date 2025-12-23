@@ -10,12 +10,6 @@ A comprehensive OpenCart extension that integrates with the CodGuard API to mana
 - **Fail-open approach** - If API is unreachable, customers can still checkout (customer-friendly)
 - **Customizable rejection message** - Configure what message customers see when blocked
 
-### ✅ Real-time Order Sync
-- **Automatic order synchronization** - Orders are automatically queued when status changes
-- **Bundled sync** - Orders are sent in batches every hour to optimize API usage
-- **Status-based filtering** - Only syncs orders with configured successful/refused statuses
-- **Retry mechanism** - Failed orders remain in queue for retry
-
 ### ✅ Admin Settings Panel
 - **API Configuration** - Easy setup of Shop ID, Public Key, and Private Key
 - **Order Status Mapping** - Map OpenCart statuses to CodGuard outcomes
@@ -113,61 +107,11 @@ Configure customer rating validation:
 4. **On success:** Orders marked as sent and cleaned after 7 days
 5. **On failure:** Orders remain in queue for retry
 
-### What Gets Synced
-
-**Order data sent to CodGuard:**
-```json
-{
-  "orders": [
-    {
-      "eshop_id": 123,
-      "email": "customer@example.com",
-      "code": "12345",
-      "status": "Complete",
-      "outcome": "1",
-      "phone": "+36701234567",
-      "country_code": "HU",
-      "postal_code": "1111",
-      "address": "Budapest, Example St. 1, District 5"
-    }
-  ]
-}
-```
-
 **Outcome values:**
-- `"1"` - Successful order (configured successful status)
-- `"-1"` - Refused order (configured refused status)
+- Successful order (configured successful status)
+- Refused order (configured refused status)
 
 ## API Endpoints
-
-### Customer Rating Endpoint
-```
-GET https://api.codguard.com/api/customer-rating/{shop_id}/{email}
-```
-
-**Headers:**
-- `Accept: application/json`
-- `x-api-key: {public_key}`
-
-**Response (200 OK):**
-```json
-{
-  "rating": 0.75
-}
-```
-
-**Response (404 Not Found):**
-- New customer, rating defaults to 1.0 (allow)
-
-### Order Import Endpoint
-```
-POST https://api.codguard.com/api/orders/import
-```
-
-**Headers:**
-- `Content-Type: application/json`
-- `X-API-PUBLIC-KEY: {public_key}`
-- `X-API-PRIVATE-KEY: {private_key}`
 
 **Body:**
 ```json
@@ -194,31 +138,6 @@ The statistics tab shows:
 - Customer rating
 - IP address
 
-### Database Tables
-
-**`oc_codguard_block_events`**
-- Stores COD block events
-- Cleaned automatically (90+ days old removed)
-
-**`oc_codguard_order_queue`**
-- Stores orders pending sync
-- Cleaned automatically (sent orders 7+ days old removed)
-
-### Logs
-
-All activity is logged to OpenCart error log:
-- Location: `system/storage/logs/error.log`
-- Prefix: `CodGuard:`
-
-**Example log entries:**
-```
-CodGuard: Rating API called for customer@example.com - HTTP 200
-CodGuard: Blocked COD for customer@example.com (rating: 0.25)
-CodGuard: Order #12345 queued for sync
-CodGuard: Sending 5 bundled orders to API
-CodGuard: Successfully sent 5 orders
-```
-
 ## Troubleshooting
 
 ### COD Not Being Blocked
@@ -230,14 +149,6 @@ CodGuard: Successfully sent 5 orders
 4. Rating tolerance is set appropriately
 5. Check error log for API errors
 
-### Orders Not Syncing
-
-**Check:**
-1. Order status matches configured successful/refused status
-2. Order has valid email address
-3. Queue is not empty: check `oc_codguard_order_queue` table
-4. API keys are correct (both public and private)
-5. Check error log for API errors
 
 ### API Connection Issues
 
@@ -253,53 +164,7 @@ CodGuard: Successfully sent 5 orders
 - Check server firewall settings
 - Extension uses fail-open approach for rating checks
 
-### Statistics Not Showing
 
-**Check:**
-1. Tables were created during installation
-2. Run this SQL to verify:
-```sql
-SELECT COUNT(*) FROM oc_codguard_block_events;
-SELECT COUNT(*) FROM oc_codguard_order_queue;
-```
-
-### Manual Queue Processing
-
-To manually trigger queue processing, you can run:
-
-```php
-// In OpenCart admin or via cron
-$this->load->model('extension/module/codguard');
-$this->model_extension_module_codguard->sendBundledOrders();
-```
-
-## Maintenance & Cleanup
-
-### Automatic Cleanup
-
-The extension automatically cleans:
-- Block events older than 90 days
-- Sent orders older than 7 days
-
-### Manual Cleanup
-
-To manually clean old records:
-
-```php
-$this->load->model('extension/module/codguard');
-$this->model_extension_module_codguard->cleanOldRecords();
-```
-
-### Recommended Cron Job
-
-Add to your server cron to process queue and cleanup:
-
-```bash
-# Process queue every hour
-0 * * * * php /path/to/opencart/admin/index.php extension/module/codguard/sendBundledOrders
-
-# Cleanup old records daily at 3 AM
-0 3 * * * php /path/to/opencart/admin/index.php extension/module/codguard/cleanOldRecords
 ```
 
 ## Uninstallation
