@@ -1,0 +1,238 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="submit" form="form-codguard" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+
+    {% if is_configured %}
+    <div class="alert alert-success"><i class="fa fa-check-circle"></i> Plugin is properly configured and enabled.</div>
+    {% else %}
+    <div class="alert alert-warning"><i class="fa fa-exclamation-triangle"></i> Please configure API credentials to enable the plugin.</div>
+    {% endif %}
+
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+      </div>
+      <div class="panel-body">
+        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-codguard" class="form-horizontal">
+
+          <ul class="nav nav-tabs">
+            <li class="active"><a href="#tab-api-config" data-toggle="tab">{{ tab_api_config }}</a></li>
+            <li><a href="#tab-order-status" data-toggle="tab">{{ tab_order_status }}</a></li>
+            <li><a href="#tab-payment-methods" data-toggle="tab">{{ tab_payment_methods }}</a></li>
+            <li><a href="#tab-rating-settings" data-toggle="tab">{{ tab_rating_settings }}</a></li>
+            <li><a href="#tab-statistics" data-toggle="tab">{{ tab_statistics }}</a></li>
+          </ul>
+
+          <div class="tab-content">
+
+            <!-- API Configuration Tab -->
+            <div class="tab-pane active" id="tab-api-config">
+              <div class="form-group required">
+                <label class="col-sm-2 control-label" for="input-shop-id">{{ entry_shop_id }}</label>
+                <div class="col-sm-10">
+                  <input type="text" name="module_codguard_shop_id" value="{{ module_codguard_shop_id }}" placeholder="{{ entry_shop_id }}" id="input-shop-id" class="form-control" />
+                  {% if error_shop_id %}
+                  <div class="text-danger">{{ error_shop_id }}</div>
+                  {% endif %}
+                  <p class="help-block">{{ help_shop_id }}</p>
+                </div>
+              </div>
+
+              <div class="form-group required">
+                <label class="col-sm-2 control-label" for="input-public-key">{{ entry_public_key }}</label>
+                <div class="col-sm-10">
+                  <input type="text" name="module_codguard_public_key" value="{{ module_codguard_public_key }}" placeholder="{{ entry_public_key }}" id="input-public-key" class="form-control" />
+                  {% if error_public_key %}
+                  <div class="text-danger">{{ error_public_key }}</div>
+                  {% endif %}
+                  <p class="help-block">{{ help_public_key }}</p>
+                </div>
+              </div>
+
+              <div class="form-group required">
+                <label class="col-sm-2 control-label" for="input-private-key">{{ entry_private_key }}</label>
+                <div class="col-sm-10">
+                  <input type="password" name="module_codguard_private_key" value="{{ module_codguard_private_key }}" placeholder="{{ entry_private_key }}" id="input-private-key" class="form-control" />
+                  {% if error_private_key %}
+                  <div class="text-danger">{{ error_private_key }}</div>
+                  {% endif %}
+                  <p class="help-block">{{ help_private_key }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-status">{{ entry_status }}</label>
+                <div class="col-sm-10">
+                  <select name="module_codguard_status" id="input-status" class="form-control">
+                    {% if module_codguard_status %}
+                    <option value="1" selected="selected">{{ text_enabled }}</option>
+                    <option value="0">{{ text_disabled }}</option>
+                    {% else %}
+                    <option value="1">{{ text_enabled }}</option>
+                    <option value="0" selected="selected">{{ text_disabled }}</option>
+                    {% endif %}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Order Status Mapping Tab -->
+            <div class="tab-pane" id="tab-order-status">
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-good-status">{{ entry_good_status }}</label>
+                <div class="col-sm-10">
+                  <select name="module_codguard_good_status" id="input-good-status" class="form-control">
+                    {% for order_status in order_statuses %}
+                    <option value="{{ order_status.order_status_id }}"{% if order_status.order_status_id == module_codguard_good_status %} selected="selected"{% endif %}>{{ order_status.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <p class="help-block">{{ help_good_status }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-refused-status">{{ entry_refused_status }}</label>
+                <div class="col-sm-10">
+                  <select name="module_codguard_refused_status" id="input-refused-status" class="form-control">
+                    {% for order_status in order_statuses %}
+                    <option value="{{ order_status.order_status_id }}"{% if order_status.order_status_id == module_codguard_refused_status %} selected="selected"{% endif %}>{{ order_status.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <p class="help-block">{{ help_refused_status }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment Methods Tab -->
+            <div class="tab-pane" id="tab-payment-methods">
+              <div class="form-group">
+                <label class="col-sm-2 control-label">{{ entry_cod_methods }}</label>
+                <div class="col-sm-10">
+                  {% if payment_methods %}
+                    {% for payment_method in payment_methods %}
+                    <div class="checkbox">
+                      <label>
+                        <input type="checkbox" name="module_codguard_cod_methods[]" value="{{ payment_method.code }}"{% if payment_method.code in module_codguard_cod_methods %} checked="checked"{% endif %} />
+                        {{ payment_method.name }}
+                      </label>
+                    </div>
+                    {% endfor %}
+                    <p class="help-block">{{ help_cod_methods }}</p>
+                  {% else %}
+                    <p>No payment methods available. Please configure payment methods first.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Rating Settings Tab -->
+            <div class="tab-pane" id="tab-rating-settings">
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-rating-tolerance">{{ entry_rating_tolerance }}</label>
+                <div class="col-sm-10">
+                  <div class="input-group">
+                    <input type="number" name="module_codguard_rating_tolerance" value="{{ module_codguard_rating_tolerance }}" placeholder="{{ entry_rating_tolerance }}" id="input-rating-tolerance" class="form-control" min="0" max="100" step="1" />
+                    <span class="input-group-addon">%</span>
+                  </div>
+                  <p class="help-block">{{ help_rating_tolerance }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-rejection-message">{{ entry_rejection_message }}</label>
+                <div class="col-sm-10">
+                  <textarea name="module_codguard_rejection_message" rows="3" placeholder="{{ entry_rejection_message }}" id="input-rejection-message" class="form-control">{{ module_codguard_rejection_message }}</textarea>
+                  <p class="help-block">{{ help_rejection_message }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div class="tab-pane" id="tab-statistics">
+              <h3>COD Block Statistics</h3>
+              <p>View how many times cash-on-delivery payment was blocked due to low customer ratings.</p>
+
+              <div class="row" style="margin-top: 20px;">
+                <div class="col-sm-3">
+                  <div class="well text-center">
+                    <h2>{{ statistics.today }}</h2>
+                    <p>Today</p>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="well text-center">
+                    <h2>{{ statistics.week }}</h2>
+                    <p>Last 7 Days</p>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="well text-center">
+                    <h2>{{ statistics.month }}</h2>
+                    <p>Last 30 Days</p>
+                  </div>
+                </div>
+                <div class="col-sm-3">
+                  <div class="well text-center">
+                    <h2>{{ statistics.all }}</h2>
+                    <p>All Time</p>
+                  </div>
+                </div>
+              </div>
+
+              {% if recent_blocks %}
+              <h3 style="margin-top: 30px;">Recent Blocks</h3>
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                  <thead>
+                    <tr>
+                      <td class="text-left">Date & Time</td>
+                      <td class="text-left">Customer Email</td>
+                      <td class="text-left">Rating</td>
+                      <td class="text-left">IP Address</td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for block in recent_blocks %}
+                    <tr>
+                      <td class="text-left">{{ block.timestamp|date('Y-m-d H:i:s') }}</td>
+                      <td class="text-left">{{ block.email }}</td>
+                      <td class="text-left">{{ (block.rating * 100)|number_format(1) }}%</td>
+                      <td class="text-left">{{ block.ip_address }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <div class="alert alert-info" style="margin-top: 30px;">
+                <i class="fa fa-info-circle"></i> No COD blocks recorded yet. Statistics will appear here when customers are blocked from using cash-on-delivery payment.
+              </div>
+              {% endif %}
+            </div>
+
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{{ footer }}
