@@ -1,220 +1,224 @@
-# CodGuard for OpenCart v2.9.0 - Installation Guide
+# CodGuard for OpenCart 4.x - Installation Guide
 
-## What's New in v2.9.0
+## Overview
 
-- ✅ **Real-time order uploads from admin panel** (not just customer checkout)
-- ✅ **Database trigger** automatically detects order status changes
-- ✅ **UTF-8 encoding fixed** for Central European languages (HU, CZ, SK, RO, HR)
-- ✅ **Dynamic status configuration** - reads from admin panel settings
+CodGuard protects your business from COD (Cash on Delivery) fraud by validating customer trustworthiness in real-time during checkout. Low-rated customers are automatically prevented from selecting COD payment.
 
 ## Installation Steps
 
-### 1. Install the Extension
+### 1. Download the Extension
 
-1. Go to **Admin Panel → Extensions → Installer**
-2. Upload `codguard-oc4-v2.9.0.ocmod.zip`
-3. Click **Install**
-4. Go to **Extensions → Extensions → Fraud**
-5. Find "CodGuard" and click **Install**
-6. Click **Edit** to configure
+1. Click the green **"Code"** button on GitHub
+2. Select **"Download ZIP"**
+3. Extract the ZIP file to your computer
 
-### 2. Upload Queue Processor Script
+### 2. Prepare for Upload
 
-After installing the extension, you need to upload one additional file:
+1. Navigate to the extracted `codguard-for-opencart-4` folder
+2. You'll see folders: `admin/`, `catalog/`, and files: `install.json`, `install.php`
+3. Create a ZIP archive containing these folders and files
+4. Name it `codguard-oc4.ocmod.zip`
 
-1. Download `codguard_process_queue.php` from the package
-2. Upload it to your OpenCart root directory (same folder as `index.php`)
-3. Set file permissions: `chmod 644 codguard_process_queue.php`
+### 3. Install via OpenCart Admin Panel
 
-### 3. Set Up Cron Job (REQUIRED)
-
-The queue processor must run every minute to upload orders in real-time.
-
-**Option A: Via cPanel/Plesk**
-1. Go to **Cron Jobs** in your hosting panel
-2. Add a new cron job:
-   - **Frequency:** Every minute (`* * * * *`)
-   - **Command:**
-     ```bash
-     cd /path/to/opencart && /usr/bin/php codguard_process_queue.php > /dev/null 2>&1
-     ```
-   - Replace `/path/to/opencart` with your actual OpenCart path
-
-**Option B: Via SSH**
-```bash
-crontab -e
-```
-Add this line:
-```bash
-* * * * * cd /path/to/opencart && /usr/bin/php codguard_process_queue.php > /dev/null 2>&1
-```
-
-**Option C: Via External Cron Service**
-- Use services like EasyCron or cron-job.org
-- Set URL: `https://yourstore.com/codguard_process_queue.php`
-- Note: You'll need to modify the script to allow HTTP access
-
-### 4. Verify Installation
-
-After installation, verify everything is working:
-
-1. **Check Database:**
-   ```sql
-   SHOW TABLES LIKE '%codguard%';
-   ```
-   You should see: `oc_codguard_upload_queue`, `oc_codguard_block_events`
-
-2. **Check Trigger:**
-   ```sql
-   SHOW TRIGGERS LIKE 'oc_order_history';
-   ```
-   You should see: `codguard_order_history_trigger`
-
-3. **Test Order Upload:**
-   - Create a test order
-   - Change its status to "Complete" or "Denied" (or whatever you configured)
-   - Wait 1 minute
-   - Check CodGuard database for the order
-
-4. **Check Logs:**
-   ```bash
-   tail -f storage/logs/error.log | grep QUEUE-PROCESSOR
-   ```
-   You should see messages like:
-   - `Starting queue processor`
-   - `Found X pending uploads`
-   - `SUCCESS - X orders uploaded`
+1. Go to **Extensions → Installer**
+2. Click **Upload**
+3. Select the `codguard-oc4.ocmod.zip` file
+4. Wait for upload to complete
+5. Go to **Extensions → Extensions**
+6. Select **Fraud** from the extension type dropdown
+7. Find **CodGuard** and click **Install** (green plus icon)
+8. Click **Edit** to configure your settings
 
 ## Configuration
 
-### Admin Panel Settings
+### Required Settings
 
-1. **API Configuration:**
-   - Shop ID
-   - Public Key
-   - Private Key
+Navigate to **Extensions → Extensions → Fraud → CodGuard** and configure:
 
-2. **Order Status Mapping:**
-   - **Good Status:** Orders to report as successful (e.g., "Complete")
-   - **Refused Status:** Orders to report as denied (e.g., "Denied")
+#### 1. API Configuration
+- **Shop ID** - Your unique shop identifier from CodGuard dashboard
+- **Public Key** - Your API public key (minimum 10 characters)
+- **Private Key** - Your API private key (minimum 10 characters)
 
-3. **Payment Methods:**
-   - Select which payment methods require COD validation
+#### 2. Payment Method Selection
+Select which payment methods should trigger customer rating validation:
+- Typically "Cash On Delivery" or similar COD methods
+- Only checked methods will be validated
 
-4. **Rating Settings:**
-   - Minimum rating tolerance (0-100%)
-   - Rejection message shown to customers
+#### 3. Rating Settings
+- **Rating Tolerance** - Minimum acceptable customer rating (0-100%)
+  - Recommended: 30-40%
+  - Example: If set to 35%, customers with rating below 35% cannot use COD
+- **Rejection Message** - Message displayed to blocked customers
+  - Default: "Unfortunately, we cannot offer Cash on Delivery for this order."
+
+#### 4. Module Status
+- **Status** - Enable or disable the extension
 
 ## How It Works
 
-### Customer Checkout (Real-time via Events)
-1. Customer places order with COD
-2. Order status changes to "Complete" or "Denied"
-3. OpenCart event fires → uploads immediately
+### Customer Checkout Flow
 
-### Admin Panel (Real-time via Database Trigger)
-1. Admin changes order status to "Complete" or "Denied"
-2. Database trigger fires → adds to queue
-3. Cron runs every minute → uploads queued orders
-4. **Maximum delay: 60 seconds**
+1. Customer enters checkout with billing information
+2. Customer selects COD payment method
+3. **Extension checks customer rating** via CodGuard API
+4. **If rating < tolerance:** Order is blocked with error message
+5. **If rating ≥ tolerance:** Order proceeds normally
+6. **If API fails:** Order proceeds (fail-open approach for customer-friendliness)
+
+### Security & Privacy
+
+- Rating checks happen **server-side only**
+- No sensitive data exposed to frontend
+- **Fail-open philosophy:** If API is unreachable, orders proceed to protect business continuity
+- IP addresses logged for security tracking
+
+## Verification
+
+After installation, test the extension:
+
+### 1. Check Database Tables
+
+```sql
+SHOW TABLES LIKE '%codguard%';
+```
+
+You should see:
+- `oc_codguard_block_events`
+- `oc_codguard_order_queue`
+
+### 2. Test COD Blocking
+
+1. Enable the extension in admin panel
+2. Configure your API credentials
+3. Set rating tolerance (e.g., 35%)
+4. Place a test order as a customer
+5. Select COD payment method
+6. Extension will validate rating and block/allow accordingly
+
+### 3. Check Logs
+
+View extension activity in OpenCart error log:
+```bash
+tail -f storage/logs/error.log | grep "CodGuard"
+```
+
+You should see entries like:
+- `CodGuard: Rating API called for customer@example.com - HTTP 200`
+- `CodGuard: Blocked COD for customer@example.com (rating: 0.25)`
+
+## Statistics Dashboard
+
+The admin panel includes a statistics tab showing:
+
+**Block Statistics:**
+- Today's blocks
+- Last 7 days
+- Last 30 days
+- All time total
+
+**Recent Blocks Table:**
+- Date & time of block
+- Customer email
+- Customer rating
+- IP address
+
+**Automatic Cleanup:**
+- Block events older than 90 days are automatically removed
 
 ## Troubleshooting
 
-### Orders Not Uploading
+### COD Not Being Blocked
 
-1. **Check cron is running:**
-   ```bash
-   grep "QUEUE-PROCESSOR" storage/logs/error.log
-   ```
+**Check:**
+1. Extension is enabled (Status = Enabled)
+2. API keys are configured correctly
+3. Payment method is selected in COD methods list
+4. Rating tolerance is set appropriately
+5. Check error log for API errors
 
-2. **Check queue table:**
+### API Connection Issues
+
+**Common causes:**
+- Incorrect API keys
+- cURL not enabled on server
+- Firewall blocking outbound HTTPS connections
+- API endpoint temporarily unavailable
+
+**Solutions:**
+- Verify API keys in CodGuard dashboard
+- Contact hosting provider to enable cURL
+- Check server firewall settings
+- Extension uses fail-open approach (customers can still checkout)
+
+### Statistics Not Showing
+
+**Check:**
+1. Tables were created during installation
+2. Run this SQL to verify:
    ```sql
-   SELECT * FROM oc_codguard_upload_queue WHERE processed = 0;
+   SELECT COUNT(*) FROM oc_codguard_block_events;
    ```
 
-3. **Check trigger exists:**
+## Uninstallation
+
+### Standard Uninstall
+
+1. Go to **Extensions → Extensions → Fraud**
+2. Find **CodGuard**
+3. Click **Uninstall** (red minus icon)
+
+**Note:** Database tables are preserved to retain historical data.
+
+### Complete Removal
+
+To completely remove including data:
+
+1. Uninstall via admin panel
+2. Run these SQL queries:
    ```sql
-   SHOW TRIGGERS LIKE 'oc_order_history';
+   DROP TABLE IF EXISTS `oc_codguard_block_events`;
+   DROP TABLE IF EXISTS `oc_codguard_order_queue`;
+   DELETE FROM `oc_setting` WHERE `key` LIKE 'module_codguard%';
    ```
 
-4. **Test manually:**
-   ```bash
-   php codguard_process_queue.php
-   ```
+## API Endpoint Used
 
-### UTF-8 Characters Corrupted
-
-The script automatically handles UTF-8 encoding. If you still see issues:
-
-1. Check database charset:
-   ```sql
-   SHOW CREATE TABLE oc_order;
-   ```
-   Should show: `CHARSET=utf8mb4`
-
-2. The queue processor sets `utf8mb4` charset automatically
-
-### Cron Not Running
-
-1. **Check crontab:**
-   ```bash
-   crontab -l
-   ```
-
-2. **Check cron logs:**
-   ```bash
-   grep CRON /var/log/syslog
-   ```
-
-3. **Test script manually:**
-   ```bash
-   cd /path/to/opencart && php codguard_process_queue.php
-   ```
-
-## Upgrading from v2.8.0 or Earlier
-
-If you're upgrading from v2.8.0:
-
-1. Uninstall old version via **Extensions → Fraud → Uninstall**
-2. **Important:** Delete old extension folder:
-   ```bash
-   rm -rf extension/codguard
-   ```
-3. Follow installation steps above
-4. Your settings will be preserved (API keys, statuses, etc.)
-
-## File Structure
+The extension uses the CodGuard Customer Rating API:
 
 ```
-codguard-oc4-v2.9.0.ocmod.zip
-├── install.json                           # Extension metadata
-├── install.php                            # Database setup script
-├── codguard_process_queue.php            # Queue processor (upload to root)
-├── admin/
-│   ├── controller/fraud/codguard.php
-│   ├── language/en-gb/fraud/codguard.php
-│   ├── model/fraud/codguard.php
-│   └── view/template/fraud/codguard.twig
-└── catalog/
-    ├── controller/fraud/codguard.php
-    ├── language/en-gb/fraud/codguard.php
-    ├── model/fraud/codguard.php
-    └── view/javascript/codguard.js
+GET https://api.codguard.com/api/customer-rating/{shop_id}/{email}
+Headers:
+  Accept: application/json
+  x-api-key: {public_key}
 ```
+
+**Response (200 OK):**
+```json
+{
+  "rating": 0.75
+}
+```
+
+**Response (404 Not Found):**
+- New customer, rating defaults to 1.0 (allow)
+
+## Requirements
+
+- **OpenCart:** 4.x
+- **PHP:** 7.4 or higher
+- **PHP Extensions:** cURL must be enabled
+- **CodGuard Account:** Active account with Shop ID and API keys
 
 ## Support
 
 - **Documentation:** https://codguard.com/docs
-- **Issues:** https://github.com/codguard/opencart-extension/issues
-- **Email:** support@codguard.com
-
-## Version History
-
-- **v2.9.0** - Database trigger for admin uploads, UTF-8 fix
-- **v2.8.0** - Real-time uploads via events
-- **v2.7.0** - Removed bundling delay
-- **v2.6.0** - Initial order sync system
+- **Support Email:** info@codguard.com
+- **Extension Version:** 1.0.0
+- **Compatible With:** OpenCart 4.x
+- **License:** GPL v2 or later
 
 ---
 
-**Important:** The cron job is **required** for admin panel uploads to work. Without it, only customer checkout orders will upload in real-time.
+**Note:** This extension requires an active CodGuard account. Visit https://codguard.com to sign up.
