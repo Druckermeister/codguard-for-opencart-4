@@ -9,9 +9,14 @@
 .DS_Store
 Thumbs.db
 
-# Test artifacts
-/tests/*.png
-/tests/*.log
+# Development files
+.env
+CREDENTIALS.md
+/archive/
+/docs/
+/scripts/
+/upload/
+*.ocmod.zip
 
 # Temporary files
 *.tmp
