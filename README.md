@@ -111,15 +111,6 @@ Configure customer rating validation:
 - Successful order (configured successful status)
 - Refused order (configured refused status)
 
-## API Endpoints
-
-**Body:**
-```json
-{
-  "orders": [...]
-}
-```
-
 ## Statistics & Monitoring
 
 ### Admin Dashboard
@@ -148,24 +139,6 @@ The statistics tab shows:
 3. Payment method is selected in COD methods list
 4. Rating tolerance is set appropriately
 5. Check error log for API errors
-
-
-### API Connection Issues
-
-**Common causes:**
-- Incorrect API keys
-- cURL not enabled on server
-- Firewall blocking outbound HTTPS connections
-- API endpoint temporarily unavailable
-
-**Solution:**
-- Verify API keys in CodGuard dashboard
-- Contact hosting provider to enable cURL
-- Check server firewall settings
-- Extension uses fail-open approach for rating checks
-
-
-```
 
 ## Uninstallation
 
@@ -255,7 +228,6 @@ rm -rf catalog/language/en-gb/extension/module/codguard.php
 ## Credits
 
 **Developed by:** CodGuard Team
-**Based on:** CodGuard for WooCommerce plugin
 **Special Thanks:** OpenCart community for excellent documentation
 
 ---
