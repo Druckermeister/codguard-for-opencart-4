@@ -1,0 +1,31 @@
+name: Build OpenCart Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create extension package
+        run: |
+          zip -r codguard-oc4.ocmod.zip admin catalog *.php *.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: codguard-opencart4
+          path: codguard-oc4.ocmod.zip
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: codguard-oc4.ocmod.zip
