@@ -1,0 +1,38 @@
+name: Deploy to Test Site
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.OPENCART_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.OPENCART_SSH_PORT }} ${{ secrets.OPENCART_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          SSH_HOST: ${{ secrets.OPENCART_SSH_HOST }}
+          SSH_PORT: ${{ secrets.OPENCART_SSH_PORT }}
+          SSH_USER: ${{ secrets.OPENCART_SSH_USER }}
+        run: |
+          rsync -avz -e "ssh -p $SSH_PORT" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='*.md' \
+            ./ $SSH_USER@$SSH_HOST:/www/extension/codguard/
+
+      - name: Deployment complete
+        run: |
+          echo "✅ Deployed to OpenCart test site"
+          echo "📍 Site: http://opencart.codguard.com"
