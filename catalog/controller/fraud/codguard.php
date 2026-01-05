@@ -106,6 +106,13 @@ class Codguard extends \Opencart\System\Engine\Controller
             // Customer rating is too low - remove COD payment methods from the list
             $this->log->write('CodGuard [WARNING]: Customer rating BELOW tolerance - FILTERING OUT COD methods');
 
+            // Send feedback to API (wrapped in try-catch to prevent crashes)
+            try {
+                $this->model_extension_codguard_fraud_codguard->sendFeedback($email, $rating, $tolerance, 'blocked');
+            } catch (\Exception $e) {
+                $this->log->write('CodGuard [ERROR]: sendFeedback failed: ' . $e->getMessage());
+            }
+
             // Log the block event
             $this->model_extension_codguard_fraud_codguard->logBlockEvent(
                 $email,
@@ -132,6 +139,13 @@ class Codguard extends \Opencart\System\Engine\Controller
 
             $this->log->write('CodGuard [INFO]: Payment methods filtered - remaining count: ' . count($output));
         } else {
+            // Send feedback to API for allowed transactions (wrapped in try-catch)
+            try {
+                $this->model_extension_codguard_fraud_codguard->sendFeedback($email, $rating, $tolerance, 'allowed');
+            } catch (\Exception $e) {
+                $this->log->write('CodGuard [ERROR]: sendFeedback failed: ' . $e->getMessage());
+            }
+
             $this->log->write('CodGuard [INFO]: Customer rating OK (' . $rating . ' >= ' . $tolerance . ') - allowing all payment methods including COD');
         }
     }

@@ -24,6 +24,11 @@ class Codguard extends \Opencart\System\Engine\Model {
     const API_ORDER_ENDPOINT = 'https://api.codguard.com/api/orders/import';
 
     /**
+     * API endpoint for feedback
+     */
+    const API_FEEDBACK_ENDPOINT = 'https://api.codguard.com/api/feedback';
+
+    /**
      * Get customer rating from CodGuard API
      *
      * @param string $email Customer email
@@ -131,6 +136,66 @@ class Codguard extends \Opencart\System\Engine\Model {
         ");
 
         $this->log->write('CodGuard: Blocked COD for ' . $email . ' (rating: ' . $rating . ')');
+    }
+
+    /**
+     * Send feedback to CodGuard API about COD blocking decision
+     *
+     * @param string $email Customer email
+     * @param float $rating Customer rating (0-1)
+     * @param float $threshold Threshold (0-1)
+     * @param string $action Action taken ('blocked' or 'allowed')
+     * @return bool Success status
+     */
+    public function sendFeedback(string $email, float $rating, float $threshold, string $action): bool {
+        $shop_id = $this->config->get('module_codguard_shop_id');
+        $public_key = $this->config->get('module_codguard_public_key');
+
+        if (empty($shop_id) || empty($public_key)) {
+            $this->log->write('CodGuard [WARNING]: Cannot send feedback - API keys not configured');
+            return false;
+        }
+
+        $url = self::API_FEEDBACK_ENDPOINT;
+
+        $data = array(
+            'eshop_id' => (int)$shop_id,
+            'email' => $email,
+            'reputation' => (float)$rating,
+            'threshold' => (float)$threshold,
+            'action' => $action
+        );
+
+        $this->log->write('CodGuard [DEBUG]: Sending feedback - Email: ' . $email . ', Rating: ' . $rating . ', Threshold: ' . $threshold . ', Action: ' . $action);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'X-API-KEY: ' . $public_key
+        ));
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if ($curl_error) {
+            $this->log->write('CodGuard [WARNING]: Feedback API cURL error - ' . $curl_error);
+            return false;
+        }
+
+        if ($http_code == 200) {
+            $this->log->write('CodGuard [DEBUG]: Feedback sent successfully (action: ' . $action . ')');
+            return true;
+        } else {
+            $this->log->write('CodGuard [WARNING]: Feedback API returned status ' . $http_code . ': ' . $response);
+            return false;
+        }
     }
 
     /**
