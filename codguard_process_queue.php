@@ -23,8 +23,6 @@ function log_message($message) {
     file_put_contents($log_file, $timestamp . ' - ' . $message . PHP_EOL, FILE_APPEND);
 }
 
-log_message('CodGuard [QUEUE-PROCESSOR]: Starting queue processor');
-
 // Get module settings
 $settings = array();
 $result = $mysqli->query("SELECT `key`, value, serialized FROM " . DB_PREFIX . "setting WHERE store_id = 0 AND `code` = 'module_codguard'");
@@ -32,9 +30,8 @@ while ($row = $result->fetch_assoc()) {
     $settings[$row['key']] = $row['serialized'] ? json_decode($row['value'], true) : $row['value'];
 }
 
-// Check if module is enabled
+// Check if module is enabled (silent exit if disabled)
 if (empty($settings['module_codguard_status'])) {
-    log_message('CodGuard [QUEUE-PROCESSOR]: Module disabled, exiting');
     exit;
 }
 
@@ -45,15 +42,20 @@ $good_status = $settings['module_codguard_good_status'] ?? 5;
 $refused_status = $settings['module_codguard_refused_status'] ?? 8;
 
 if (empty($shop_id) || empty($public_key) || empty($private_key)) {
-    log_message('CodGuard [QUEUE-PROCESSOR]: API keys not configured');
+    // Only log once per day for missing API keys
+    $last_log_file = __DIR__ . '/storage/cache/codguard_last_api_key_warning.txt';
+    if (!file_exists($last_log_file) || (time() - filemtime($last_log_file)) > 86400) {
+        log_message('CodGuard [QUEUE-PROCESSOR]: API keys not configured');
+        touch($last_log_file);
+    }
     exit;
 }
 
 // Get pending uploads
 $queue_result = $mysqli->query("SELECT id, order_id, order_status_id FROM " . DB_PREFIX . "codguard_upload_queue WHERE processed = 0 ORDER BY id ASC LIMIT 50");
 
+// Silent exit if nothing to process
 if ($queue_result->num_rows == 0) {
-    log_message('CodGuard [QUEUE-PROCESSOR]: No pending uploads');
     exit;
 }
 
@@ -168,7 +170,5 @@ if (!empty($orders_to_upload)) {
 
 // Clean up old processed records
 $mysqli->query("DELETE FROM " . DB_PREFIX . "codguard_upload_queue WHERE processed = 1 AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)");
-
-log_message('CodGuard [QUEUE-PROCESSOR]: Queue processor completed');
 
 $mysqli->close();
