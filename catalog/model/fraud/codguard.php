@@ -423,4 +423,93 @@ class Codguard extends \Opencart\System\Engine\Model {
             AND sent_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
         ");
     }
+
+    /**
+     * Filter COD payment methods based on customer rating (Direct call - bypasses event system)
+     *
+     * @param array $method_data Payment methods array (passed by reference)
+     * @return void
+     */
+    public function filterPaymentMethodsDirect(array &$method_data): void {
+        $this->log->write('========================================');
+        $this->log->write('CodGuard [DIRECT]: filterPaymentMethodsDirect() called');
+        $this->log->write('========================================');
+
+        // Check if module is enabled
+        if (!$this->config->get('module_codguard_status')) {
+            $this->log->write('CodGuard [INFO]: Module disabled, skipping filter');
+            return;
+        }
+
+        // Get configured COD methods
+        $cod_methods = $this->config->get('module_codguard_cod_methods');
+        if (!$cod_methods) {
+            $this->log->write('CodGuard [INFO]: No COD methods configured');
+            return;
+        }
+
+        $this->log->write('CodGuard [DEBUG]: Configured COD methods: ' . json_encode($cod_methods));
+
+        // Get customer email from session
+        $email = '';
+        if (isset($this->session->data['customer']['email'])) {
+            $email = $this->session->data['customer']['email'];
+            $this->log->write('CodGuard [DEBUG]: Email from customer session: ' . $email);
+        } elseif (isset($this->session->data['guest']['email'])) {
+            $email = $this->session->data['guest']['email'];
+            $this->log->write('CodGuard [DEBUG]: Email from guest session: ' . $email);
+        }
+
+        if (empty($email)) {
+            $this->log->write('CodGuard [INFO]: No email found, allowing all payment methods');
+            return;
+        }
+
+        // Get customer rating
+        $rating = $this->getCustomerRating($email);
+
+        if ($rating === null) {
+            $this->log->write('CodGuard [WARNING]: API failed, allowing all methods (fail-open)');
+            return;
+        }
+
+        // Compare to tolerance
+        $tolerance = (float)$this->config->get('module_codguard_rating_tolerance') / 100;
+        $this->log->write('CodGuard [DEBUG]: Rating: ' . $rating . ', Tolerance: ' . $tolerance);
+
+        if ($rating < $tolerance) {
+            $this->log->write('CodGuard [WARNING]: Rating BELOW tolerance - FILTERING COD');
+
+            // Log block event
+            $this->logBlockEvent($email, $rating, $_SERVER['REMOTE_ADDR'] ?? '');
+
+            // Send feedback
+            try {
+                $this->sendFeedback($email, $rating, $tolerance, 'blocked');
+            } catch (\Exception $e) {
+                $this->log->write('CodGuard [ERROR]: sendFeedback failed: ' . $e->getMessage());
+            }
+
+            // Filter out COD methods
+            foreach ($method_data as $key => $method) {
+                foreach ($cod_methods as $cod_method) {
+                    if (stripos($key, $cod_method) !== false || stripos($method['name'] ?? '', 'cash on delivery') !== false) {
+                        $this->log->write('CodGuard [INFO]: REMOVED: ' . $key . ' (' . ($method['name'] ?? 'unknown') . ')');
+                        unset($method_data[$key]);
+                    }
+                }
+            }
+
+            $this->log->write('CodGuard [INFO]: Filtering complete - remaining methods: ' . count($method_data));
+        } else {
+            $this->log->write('CodGuard [INFO]: Rating OK - allowing all payment methods including COD');
+
+            // Send feedback
+            try {
+                $this->sendFeedback($email, $rating, $tolerance, 'allowed');
+            } catch (\Exception $e) {
+                $this->log->write('CodGuard [ERROR]: sendFeedback failed: ' . $e->getMessage());
+            }
+        }
+    }
 }
