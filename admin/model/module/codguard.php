@@ -65,16 +65,6 @@ class Codguard extends \Opencart\System\Engine\Model {
         // Register event handlers
         $this->load->model('setting/event');
 
-        // Order status change event
-        $this->model_setting_event->addEvent([
-            'code' => 'codguard_order_status_change',
-            'description' => 'CodGuard order status change handler',
-            'trigger' => 'catalog/model/checkout/order/addHistory/after',
-            'action' => 'extension/codguard/module/codguard.eventOrderStatusChange',
-            'status' => 1,
-            'sort_order' => 0
-        ]);
-
         // Checkout script injection event (to add validation JavaScript)
         $this->model_setting_event->addEvent([
             'code' => 'codguard_checkout_script',
@@ -95,8 +85,9 @@ class Codguard extends \Opencart\System\Engine\Model {
     public function uninstall(): void {
         // Remove event handlers
         $this->load->model('setting/event');
-        $this->model_setting_event->deleteEventByCode('codguard_order_status_change');
         $this->model_setting_event->deleteEventByCode('codguard_checkout_script');
+        $this->model_setting_event->deleteEventByCode('codguard_order_status_change'); // Clean up old event
+        $this->model_setting_event->deleteEventByCode('codguard_filter_payment_methods'); // Clean up old event
 
         // Note: We don't drop tables to preserve data
         // Drop tables manually if needed:
